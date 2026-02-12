@@ -1,0 +1,56 @@
+---
+# Role: fish
+# Installs fish shell, deploys config, and sets it as login shell.
+
+- name: Install fish shell.
+  become: true
+  ansible.builtin.dnf:
+    name: fish
+    state: present
+
+- name: Ensure fish config directory exists.
+  ansible.builtin.file:
+    path: "{{ user_home }}/.config/fish"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+
+- name: Ensure fish themes directory exists.
+  ansible.builtin.file:
+    path: "{{ user_home }}/.config/fish/themes"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+
+- name: Ensure fish conf.d directory exists.
+  ansible.builtin.file:
+    path: "{{ user_home }}/.config/fish/conf.d"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+
+- name: Deploy fish config.
+  ansible.builtin.template:
+    src: config.fish.j2
+    dest: "{{ user_home }}/.config/fish/config.fish"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0644"
+
+- name: Deploy Catppuccin Macchiato fish theme.
+  ansible.builtin.copy:
+    src: "Catppuccin Macchiato.theme"
+    dest: "{{ user_home }}/.config/fish/themes/Catppuccin Macchiato.theme"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0644"
+
+- name: Set fish as login shell.
+  become: true
+  ansible.builtin.user:
+    name: "{{ user }}"
+    shell: /usr/bin/fish
+  notify: fish shell changed

@@ -1,0 +1,34 @@
+---
+# Bootstrap playbook: Shared prerequisites for all other playbooks.
+# Runs once before everything else via site.yml.
+#
+# Usage:
+#   ansible-playbook playbooks/bootstrap.yml --ask-become-pass
+
+- name: Bootstrap shared prerequisites.
+  hosts: all
+
+  vars_files:
+    - ../vars/main.yml
+    - ../vars/personal.yml
+
+  tasks:
+    - name: Update dnf cache if needed.
+      become: true
+      ansible.builtin.dnf:
+        update_cache: true
+      changed_when: false
+      tags: always
+
+    - name: Check if user linger is enabled.
+      ansible.builtin.stat:
+        path: "/var/lib/systemd/linger/{{ user }}"
+      register: linger_file
+      tags: always
+
+    - name: Enable user linger (for user services at boot).
+      become: true
+      ansible.builtin.command:
+        cmd: "loginctl enable-linger {{ user }}"
+      when: not linger_file.stat.exists
+      tags: always

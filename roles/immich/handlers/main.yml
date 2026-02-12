@@ -1,0 +1,6 @@
+---
+- name: restart immich
+  ansible.builtin.systemd:
+    name: immich
+    state: restarted
+    scope: user

@@ -1,0 +1,3 @@
+---
+security_ssh_port: "{{ ssh_port }}"
+security_ssh_password_auth: "{{ ssh_password_authentication }}"

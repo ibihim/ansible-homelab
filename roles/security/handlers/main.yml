@@ -1,0 +1,12 @@
+---
+- name: restart sshd
+  become: true
+  ansible.builtin.systemd:
+    name: sshd
+    state: restarted
+
+- name: restart fail2ban
+  become: true
+  ansible.builtin.systemd:
+    name: fail2ban
+    state: restarted

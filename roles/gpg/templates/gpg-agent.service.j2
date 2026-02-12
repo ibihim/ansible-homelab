@@ -1,0 +1,12 @@
+# {{ ansible_managed }}
+[Unit]
+Description=GnuPG cryptographic agent and passphrase cache
+Documentation=man:gpg-agent(1)
+Requires=gpg-agent.socket
+After=gpg-agent.socket
+RefuseManualStart=true
+
+[Service]
+Environment=GNUPGHOME={{ user_home }}/.gnupg
+ExecStart=/usr/bin/gpg-agent --supervised
+ExecReload=/usr/bin/gpgconf --reload gpg-agent

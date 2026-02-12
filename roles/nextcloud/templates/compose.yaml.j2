@@ -1,0 +1,60 @@
+# {{ ansible_managed }}
+name: nextcloud
+
+services:
+  db:
+    image: docker.io/postgres:{{ postgres_version }}-alpine
+    container_name: nextcloud-db
+    restart: "no"
+    volumes:
+      - {{ services_data_dir }}/nextcloud/db:/var/lib/postgresql/data:Z
+    env_file:
+      - {{ secrets_dir }}/nextcloud.env
+    environment:
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextcloud"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: docker.io/redis:{{ redis_version }}-alpine
+    container_name: nextcloud-redis
+    restart: "no"
+    command: redis-server --appendonly yes
+    volumes:
+      - {{ services_data_dir }}/nextcloud/redis:/data:Z
+    networks:
+      - internal
+
+  app:
+    image: docker.io/nextcloud:{{ nextcloud_version }}-apache
+    container_name: nextcloud-app
+    restart: "no"
+    ports:
+      - "{{ nextcloud_port }}:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - {{ services_data_dir }}/nextcloud/data:/var/www/html:Z
+    env_file:
+      - {{ secrets_dir }}/nextcloud.env
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      NEXTCLOUD_TRUSTED_DOMAINS: localhost
+      PHP_MEMORY_LIMIT: 512M
+      PHP_UPLOAD_LIMIT: 16G
+    networks:
+      - default
+      - internal
+
+networks:
+  internal:
+    internal: true

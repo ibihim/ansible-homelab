@@ -1,0 +1,9 @@
+# Remote server inventory
+# Uncomment and adjust the following lines when you have remote hosts:
+#
+# [remote]
+# server1.example.com ansible_user=deploy
+# server2.example.com ansible_user=deploy
+#
+# [remote:vars]
+# ansible_python_interpreter=/usr/bin/python3

@@ -1,0 +1,62 @@
+# {{ ansible_managed }}
+name: immich
+
+services:
+  immich-server:
+    container_name: immich_server
+    image: ghcr.io/immich-app/immich-server:{{ immich_version }}
+    volumes:
+      - {{ services_data_dir }}/immich/library:/usr/src/app/upload:Z
+    env_file:
+      - {{ secrets_dir }}/immich.env
+    ports:
+      - "{{ immich_port }}:2283"
+    depends_on:
+      - redis
+      - database
+    networks:
+      - default
+      - internal
+    restart: "no"
+
+  immich-machine-learning:
+    container_name: immich_machine_learning
+    image: ghcr.io/immich-app/immich-machine-learning:{{ immich_version }}
+    volumes:
+      - {{ services_data_dir }}/immich/model-cache:/cache:Z
+    env_file:
+      - {{ secrets_dir }}/immich.env
+    networks:
+      - internal
+    restart: "no"
+
+  redis:
+    container_name: immich_redis
+    image: docker.io/redis:{{ redis_version }}-alpine
+    networks:
+      - internal
+    restart: "no"
+    healthcheck:
+      test: redis-cli ping || exit 1
+
+  database:
+    container_name: immich_postgres
+    image: docker.io/tensorchord/pgvecto-rs:{{ pgvecto_rs_version }}
+    env_file:
+      - {{ secrets_dir }}/immich.env
+    environment:
+      POSTGRES_INITDB_ARGS: '--data-checksums'
+    volumes:
+      - {{ services_data_dir }}/immich/postgres:/var/lib/postgresql/data:Z
+    networks:
+      - internal
+    restart: "no"
+    healthcheck:
+      test: pg_isready --dbname=immich --username=postgres || exit 1
+      interval: 2m
+      start_interval: 30s
+      start_period: 5m
+
+networks:
+  internal:
+    internal: true

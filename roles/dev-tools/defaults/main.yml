@@ -1,0 +1,11 @@
+---
+# Packages available in Fedora repos
+dev_tools_dnf_packages:
+  - ripgrep
+  - fd-find
+  - bat
+  - jq
+  - fzf
+  - zoxide
+  - direnv
+  - yq

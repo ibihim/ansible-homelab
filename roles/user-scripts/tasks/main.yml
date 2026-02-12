@@ -1,0 +1,19 @@
+---
+# Role: user-scripts
+# Deploys convenience scripts to ~/.local/bin.
+
+- name: Ensure ~/.local/bin directory exists.
+  ansible.builtin.file:
+    path: "{{ user_home }}/.local/bin"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+
+- name: Deploy ,update script.
+  ansible.builtin.template:
+    src: update.sh.j2
+    dest: "{{ user_home }}/.local/bin/,update"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"

@@ -1,0 +1,21 @@
+---
+# Site playbook: Orchestrator that imports all grouped playbooks.
+#
+# This runs everything in order:
+#   0. Bootstrap (dnf cache, loginctl linger)
+#   1. Security hardening
+#   2. Development environment
+#   3. Essential services (Tailscale, Syncthing)
+#   4. Home server services (Podman, Immich, Nextcloud)
+#
+# Usage:
+#   ansible-playbook site.yml --ask-become-pass
+#   ansible-playbook site.yml --ask-become-pass --ask-vault-pass
+#   ansible-playbook site.yml --ask-become-pass --check --diff  (dry run)
+#   ansible-playbook site.yml --ask-become-pass --tags "dev-tools,fish"
+
+- import_playbook: playbooks/bootstrap.yml
+- import_playbook: playbooks/security.yml
+- import_playbook: playbooks/dev.yml
+- import_playbook: playbooks/essentials.yml
+- import_playbook: playbooks/homeserver.yml

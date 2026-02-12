@@ -1,0 +1,35 @@
+---
+# Role: git
+# Installs git + git-delta and deploys gitconfig with delta integration.
+
+- name: Install git and git-delta.
+  become: true
+  ansible.builtin.dnf:
+    name:
+      - git
+      - git-delta
+    state: present
+
+- name: Ensure git config directory exists.
+  ansible.builtin.file:
+    path: "{{ user_home }}/.config/git"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+
+- name: Deploy git config.
+  ansible.builtin.template:
+    src: gitconfig.j2
+    dest: "{{ user_home }}/.config/git/config"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0644"
+
+- name: Deploy catppuccin delta themes gitconfig.
+  ansible.builtin.copy:
+    src: catppuccin-delta.gitconfig
+    dest: "{{ user_home }}/.config/git/catppuccin-delta.gitconfig"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0644"

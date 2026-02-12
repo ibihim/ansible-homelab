@@ -1,0 +1,54 @@
+# {{ ansible_managed }}
+# ~/.config/fish/config.fish
+
+# Only execute this file once per shell.
+set -q __fish_config_sourced; and exit
+set -g __fish_config_sourced 1
+
+# Apply Catppuccin theme
+fish_config theme choose "Catppuccin Macchiato"
+
+status is-login; and begin
+    # Login shell initialisation
+end
+
+status is-interactive; and begin
+    # ── PATH ──
+    fish_add_path ~/.local/bin
+    fish_add_path /usr/local/go/bin
+    fish_add_path ~/go/bin
+    fish_add_path ~/.npm-global/bin
+
+    # ── Editor ──
+    set -gx EDITOR nvim
+    set -gx VISUAL nvim
+
+    # ── Greeting ──
+    set -g fish_greeting
+
+    # ── Aliases ──
+    alias ll 'eza -la'
+    alias cd z
+    alias lg lazygit
+
+    # ── GPG agent as SSH agent ──
+    set -gx GPG_TTY (tty)
+    set -gx SSH_AUTH_SOCK (gpgconf --list-dirs agent-ssh-socket)
+    gpgconf --launch gpg-agent
+    gpg-connect-agent --quiet updatestartuptty /bye >/dev/null
+
+    # ── Tool integrations ──
+    # fzf keybindings and completions
+    fzf --fish | source
+
+    # zoxide (smarter cd)
+    zoxide init fish | source
+
+    # starship prompt
+    if test "$TERM" != dumb
+        starship init fish | source
+    end
+
+    # direnv hook
+    direnv hook fish | source
+end

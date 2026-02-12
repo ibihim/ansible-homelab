@@ -1,0 +1,28 @@
+---
+# Dev playbook: Base system, dev tools, languages, editor, shell, theming
+#
+# Usage:
+#   ansible-playbook playbooks/dev.yml --ask-become-pass
+
+- name: Configure development environment.
+  hosts: all
+
+  vars_files:
+    - ../vars/main.yml
+    - ../vars/personal.yml
+    # Uncomment after encrypting with ansible-vault:
+    # - ../vars/secrets.yml
+
+  roles:
+    - { role: base, tags: ['base'] }
+    - { role: dev-tools, tags: ['dev-tools'] }
+    - { role: user-scripts, tags: ['user-scripts'] }
+    - { role: golang, tags: ['golang'] }
+    - { role: nodejs, tags: ['nodejs'] }
+    - { role: fonts, tags: ['fonts'] }
+    - { role: catppuccin, tags: ['catppuccin'] }
+    - { role: gpg, tags: ['gpg'] }
+    - { role: git, tags: ['git'] }
+    - { role: neovim, tags: ['neovim'] }
+    - { role: fish, tags: ['fish'] }
+    - { role: tmux, tags: ['tmux'] }

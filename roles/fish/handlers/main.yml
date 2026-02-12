@@ -1,0 +1,4 @@
+---
+- name: fish shell changed
+  ansible.builtin.debug:
+    msg: "Login shell changed to /usr/bin/fish. Log out and back in for it to take effect."

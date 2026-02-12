@@ -1,0 +1,47 @@
+---
+# Role: tailscale
+# Installs Tailscale from the OFFICIAL Tailscale repo (NOT the Fedora repo).
+# The Fedora repo has an outdated version (1.84.1 vs latest stable).
+
+- name: Remove stale custom tailscaled.service if present.
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/system/tailscaled.service
+    state: absent
+  notify: reload systemd daemon
+
+- name: Add Tailscale official repository.
+  become: true
+  ansible.builtin.get_url:
+    url: "{{ tailscale_repo_url }}"
+    dest: /etc/yum.repos.d/tailscale.repo
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Install Tailscale from official repo.
+  become: true
+  ansible.builtin.dnf:
+    name: tailscale
+    state: present
+    # This ensures the official repo version is used, not Fedora's
+    enablerepo: tailscale-stable
+
+- name: Ensure tailscaled is running and enabled.
+  become: true
+  ansible.builtin.systemd:
+    name: tailscaled
+    state: started
+    enabled: true
+    daemon_reload: true
+
+- name: Check Tailscale status.
+  ansible.builtin.command:
+    cmd: tailscale status
+  register: tailscale_status
+  changed_when: false
+  failed_when: false
+
+- name: Display Tailscale status.
+  ansible.builtin.debug:
+    msg: "{{ tailscale_status.stdout_lines | default(['Tailscale not yet authenticated. Run: sudo tailscale up']) }}"

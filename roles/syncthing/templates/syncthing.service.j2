@@ -1,0 +1,23 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Syncthing - Open Source Continuous File Synchronization
+Documentation=man:syncthing(1)
+After=network.target
+
+[Service]
+ExecStart={{ user_home }}/.local/bin/syncthing serve --no-browser --no-restart --no-upgrade --gui-address=127.0.0.1:8384
+Restart=on-failure
+RestartForceExitStatus=3
+RestartForceExitStatus=4
+SuccessExitStatus=3
+SuccessExitStatus=4
+LockPersonality=true
+MemoryDenyWriteExecute=true
+NoNewPrivileges=true
+PrivateUsers=true
+RestrictNamespaces=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+
+[Install]
+WantedBy=default.target

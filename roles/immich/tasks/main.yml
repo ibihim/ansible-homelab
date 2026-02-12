@@ -1,0 +1,68 @@
+---
+# Role: immich
+# Deploys the Immich photo management container service via podman-compose.
+# Requires: podman, secrets (decrypt-secrets must run first).
+
+- name: Ensure Immich config directory exists.
+  ansible.builtin.file:
+    path: "{{ services_config_dir }}/immich"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+
+- name: Ensure Immich data directories exist.
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+  loop:
+    - "{{ services_data_dir }}/immich"
+    - "{{ services_data_dir }}/immich/library"
+    - "{{ services_data_dir }}/immich/model-cache"
+
+- name: Check if Immich postgres directory exists.
+  ansible.builtin.stat:
+    path: "{{ services_data_dir }}/immich/postgres"
+  register: immich_pg_dir
+
+- name: Create Immich postgres directory if missing.
+  ansible.builtin.file:
+    path: "{{ services_data_dir }}/immich/postgres"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+  when: not immich_pg_dir.stat.exists
+
+- name: Deploy Immich compose file.
+  ansible.builtin.template:
+    src: compose.yaml.j2
+    dest: "{{ services_config_dir }}/immich/compose.yaml"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0644"
+  notify: restart immich
+
+- name: Deploy Immich systemd user service.
+  ansible.builtin.template:
+    src: immich.service.j2
+    dest: "{{ user_home }}/.config/systemd/user/immich.service"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0644"
+  notify: restart immich
+
+- name: Reload systemd user daemon.
+  ansible.builtin.systemd:
+    daemon_reload: true
+    scope: user
+
+- name: Enable and start Immich user service.
+  ansible.builtin.systemd:
+    name: immich
+    enabled: true
+    state: started
+    scope: user

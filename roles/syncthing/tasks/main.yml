@@ -1,0 +1,88 @@
+---
+# Role: syncthing
+# Installs syncthing from GitHub releases and enables the systemd user service.
+# Version is pinned in vars/main.yml (syncthing_version).
+
+- name: Ensure ~/.local/bin directory exists.
+  ansible.builtin.file:
+    path: "{{ user_home }}/.local/bin"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+
+- name: Check if syncthing binary exists.
+  ansible.builtin.stat:
+    path: "{{ user_home }}/.local/bin/syncthing"
+  register: syncthing_binary
+
+- name: Check installed syncthing version.
+  ansible.builtin.command:
+    cmd: "{{ user_home }}/.local/bin/syncthing --version"
+  register: syncthing_version_check
+  changed_when: false
+  failed_when: false
+  when: syncthing_binary.stat.exists
+
+- name: Download and extract syncthing tarball.
+  ansible.builtin.unarchive:
+    src: "https://github.com/syncthing/syncthing/releases/download/{{ syncthing_version }}/syncthing-linux-arm64-{{ syncthing_version }}.tar.gz"
+    dest: /tmp/
+    remote_src: true
+  when: >
+    not syncthing_binary.stat.exists or
+    (syncthing_version_check.stdout is defined and syncthing_version not in syncthing_version_check.stdout)
+
+- name: Install syncthing binary to ~/.local/bin.
+  ansible.builtin.copy:
+    src: "/tmp/syncthing-linux-arm64-{{ syncthing_version }}/syncthing"
+    dest: "{{ user_home }}/.local/bin/syncthing"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+    remote_src: true
+  when: >
+    not syncthing_binary.stat.exists or
+    (syncthing_version_check.stdout is defined and syncthing_version not in syncthing_version_check.stdout)
+  notify: restart syncthing
+
+- name: Clean up syncthing tarball extraction.
+  ansible.builtin.file:
+    path: "/tmp/syncthing-linux-arm64-{{ syncthing_version }}"
+    state: absent
+
+- name: Remove system syncthing package if present.
+  become: true
+  ansible.builtin.dnf:
+    name: syncthing
+    state: absent
+
+- name: Ensure systemd user directory exists.
+  ansible.builtin.file:
+    path: "{{ user_home }}/.config/systemd/user"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+
+# Deploy our own service unit with security hardening.
+- name: Deploy syncthing systemd user service.
+  ansible.builtin.template:
+    src: syncthing.service.j2
+    dest: "{{ user_home }}/.config/systemd/user/syncthing.service"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0644"
+  notify: restart syncthing
+
+- name: Reload systemd user daemon.
+  ansible.builtin.systemd:
+    daemon_reload: true
+    scope: user
+
+- name: Enable and start syncthing user service.
+  ansible.builtin.systemd:
+    name: syncthing
+    state: started
+    enabled: true
+    scope: user

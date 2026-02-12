@@ -1,0 +1,159 @@
+#!/usr/bin/env bash
+# {{ ansible_managed }}
+# ,update — fetch latest versions of Syncthing, Go, and Claude Code.
+set -euo pipefail
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+info()  { printf '\033[1;34m[INFO]\033[0m  %s\n' "$*"; }
+warn()  { printf '\033[1;33m[WARN]\033[0m  %s\n' "$*"; }
+ok()    { printf '\033[1;32m[ OK ]\033[0m  %s\n' "$*"; }
+err()   { printf '\033[1;31m[ERR ]\033[0m  %s\n' "$*" >&2; }
+
+# ── Syncthing ────────────────────────────────────────────────────────────────
+
+update_syncthing() {
+    info "Checking Syncthing..."
+
+    local latest
+    latest=$(curl -fsSL https://api.github.com/repos/syncthing/syncthing/releases/latest \
+        | jq -r '.tag_name')
+
+    if [[ -z "$latest" ]]; then
+        err "Failed to query latest Syncthing version."
+        return 1
+    fi
+
+    info "Latest Syncthing release: $latest"
+
+    local current="none"
+    if command -v syncthing &>/dev/null; then
+        # syncthing --version outputs e.g. "syncthing v1.28.1 ..."
+        current=$(syncthing --version | awk '{print $2}')
+    fi
+
+    info "Installed Syncthing version: $current"
+
+    if [[ "$current" == "$latest" ]]; then
+        ok "Syncthing is already up to date ($latest)."
+        return 0
+    fi
+
+    info "Updating Syncthing $current -> $latest ..."
+
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    trap 'rm -rf "$tmpdir"' RETURN
+
+    local tarball="syncthing-linux-arm64-${latest}.tar.gz"
+    local url="https://github.com/syncthing/syncthing/releases/download/${latest}/${tarball}"
+
+    info "Downloading $url ..."
+    curl -fsSL -o "${tmpdir}/${tarball}" "$url"
+
+    info "Extracting..."
+    tar -xzf "${tmpdir}/${tarball}" -C "$tmpdir"
+
+    local extracted_dir="${tmpdir}/syncthing-linux-arm64-${latest}"
+    if [[ ! -f "${extracted_dir}/syncthing" ]]; then
+        err "Expected binary not found at ${extracted_dir}/syncthing"
+        return 1
+    fi
+
+    info "Installing to {{ user_home }}/.local/bin/syncthing ..."
+    cp "${extracted_dir}/syncthing" "{{ user_home }}/.local/bin/syncthing"
+    chmod 0755 "{{ user_home }}/.local/bin/syncthing"
+
+    if systemctl --user is-active syncthing.service &>/dev/null; then
+        info "Restarting syncthing.service ..."
+        systemctl --user restart syncthing.service
+    fi
+
+    ok "Syncthing updated to $latest."
+}
+
+# ── Go ───────────────────────────────────────────────────────────────────────
+
+update_go() {
+    info "Checking Go..."
+
+    local latest
+    latest=$(curl -fsSL 'https://go.dev/dl/?mode=json' \
+        | jq -r '.[0].version')
+
+    if [[ -z "$latest" ]]; then
+        err "Failed to query latest Go version."
+        return 1
+    fi
+
+    info "Latest Go release: $latest"
+
+    local current="none"
+    if [[ -x /usr/local/go/bin/go ]]; then
+        # go version outputs e.g. "go version go1.23.4 linux/arm64"
+        current=$(/usr/local/go/bin/go version | awk '{print $3}')
+    fi
+
+    info "Installed Go version: $current"
+
+    if [[ "$current" == "$latest" ]]; then
+        ok "Go is already up to date ($latest)."
+        return 0
+    fi
+
+    info "Updating Go $current -> $latest ..."
+
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    trap 'rm -rf "$tmpdir"' RETURN
+
+    local tarball="${latest}.linux-arm64.tar.gz"
+    local url="https://go.dev/dl/${tarball}"
+
+    info "Downloading $url ..."
+    curl -fsSL -o "${tmpdir}/${tarball}" "$url"
+
+    info "Removing old /usr/local/go ..."
+    sudo rm -rf /usr/local/go
+
+    info "Extracting to /usr/local ..."
+    sudo tar -C /usr/local -xzf "${tmpdir}/${tarball}"
+
+    ok "Go updated to $latest."
+}
+
+# ── Claude Code ──────────────────────────────────────────────────────────────
+
+update_claude() {
+    info "Checking Claude Code..."
+
+    if ! command -v claude &>/dev/null; then
+        warn "claude not found on PATH, skipping."
+        return 0
+    fi
+
+    info "Running claude update ..."
+    claude update || warn "claude update returned non-zero (may already be latest)."
+
+    ok "Claude Code update check complete."
+}
+
+# ── Main ─────────────────────────────────────────────────────────────────────
+
+main() {
+    info "Starting ,update ..."
+    echo
+
+    update_syncthing
+    echo
+
+    update_go
+    echo
+
+    update_claude
+    echo
+
+    ok "All done."
+}
+
+main "$@"

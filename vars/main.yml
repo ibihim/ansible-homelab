@@ -1,0 +1,66 @@
+---
+# User configuration
+user: ibihim
+user_home: "/home/{{ user }}"
+user_uid: 1000
+
+# GPG agent settings
+gpg_default_cache_ttl: 60
+gpg_max_cache_ttl: 120
+
+# Catppuccin flavor
+catppuccin_flavor: macchiato
+
+# Tailscale repo URL
+tailscale_repo_url: https://pkgs.tailscale.com/stable/fedora/tailscale.repo
+
+# sops version (binary from GitHub release)
+sops_version: "3.9.4"
+
+# Starship version (GitHub release)
+starship_version: "1.24.2"
+
+# Lazygit version (GitHub release)
+lazygit_version: "0.59.0"
+
+# eza version (GitHub release)
+eza_version: "0.23.4"
+
+# Syncthing version (GitHub release)
+syncthing_version: "v2.0.14"
+
+# JetBrains Mono Nerd Font version
+nerd_font_version: "v3.3.0"
+nerd_font_name: "JetBrainsMono"
+
+# Service paths
+services_config_dir: "{{ user_home }}/.config/services"
+services_data_dir: "{{ user_home }}/.local/share/services"
+secrets_dir: "/run/user/{{ user_uid }}/secrets"
+sops_secrets_file: "{{ user_home }}/.config/sops-secrets/secrets.yaml"
+age_key_file: "{{ user_home }}/.config/sops/age/keys.txt"
+
+# Immich settings
+# Served over plain HTTP -- access only via Tailscale (encrypted tunnel).
+immich_port: 2283
+immich_version: "v2.5.5"
+
+# Nextcloud settings
+# Served over plain HTTP -- access only via Tailscale (encrypted tunnel).
+# If ever exposed beyond Tailscale, add a reverse proxy with TLS (e.g. Caddy).
+nextcloud_port: 8080
+nextcloud_version: "31.0.13"
+
+# Shared container image versions
+redis_version: "7.4.7"
+postgres_version: "16.11"
+pgvecto_rs_version: "pg16-v0.2.1"
+
+# SSH hardening
+ssh_port: 22
+ssh_password_authentication: "no"
+
+# Firewall allowed services (Tailscale handles most connectivity)
+firewall_allowed_services:
+  - ssh
+  - mosh

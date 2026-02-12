@@ -1,0 +1,6 @@
+---
+- name: restart nextcloud
+  ansible.builtin.systemd:
+    name: nextcloud
+    state: restarted
+    scope: user

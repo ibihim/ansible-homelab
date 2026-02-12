@@ -1,0 +1,7 @@
+---
+# Personal identity -- copy to personal.yml and fill in your values.
+# This file is tracked in git as a template; personal.yml is not.
+
+git_user_name: CHANGE_ME
+git_user_email: CHANGE_ME
+timezone: CHANGE_ME

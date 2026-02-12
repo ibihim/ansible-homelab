@@ -1,0 +1,23 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Immich photo management (podman-compose)
+Requires=decrypt-secrets.service
+After=decrypt-secrets.service
+
+[Service]
+Type=simple
+WorkingDirectory={{ services_config_dir }}/immich
+ExecStart=/usr/bin/podman-compose up
+ExecStop=/usr/bin/podman-compose down
+Restart=on-failure
+RestartSec=10
+TimeoutStartSec=300
+Environment=PATH=/usr/bin:/bin
+NoNewPrivileges=true
+LockPersonality=true
+ProtectHostname=true
+ProtectClock=true
+ProtectKernelLogs=true
+
+[Install]
+WantedBy=default.target

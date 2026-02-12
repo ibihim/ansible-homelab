@@ -1,0 +1,131 @@
+---
+# Role: dev-tools
+# Installs developer CLI tools from Fedora repos and GitHub releases.
+
+- name: Install developer CLI tools from Fedora repos.
+  become: true
+  ansible.builtin.dnf:
+    name: "{{ dev_tools_dnf_packages }}"
+    state: present
+
+# yazi -- install from COPR (recommended by upstream, not in Fedora repos)
+- name: Check if yazi COPR repo is already enabled.
+  ansible.builtin.stat:
+    path: /etc/yum.repos.d/_copr:copr.fedorainfracloud.org:lihaohong:yazi.repo
+  register: yazi_copr_repo
+
+- name: Enable yazi COPR repository.
+  become: true
+  ansible.builtin.command:
+    cmd: dnf copr enable -y lihaohong/yazi
+  when: not yazi_copr_repo.stat.exists
+  changed_when: true
+
+- name: Install yazi from COPR.
+  become: true
+  ansible.builtin.dnf:
+    name: yazi
+    state: present
+
+# starship -- install from GitHub release
+- name: Check if starship is already installed.
+  ansible.builtin.stat:
+    path: "{{ user_home }}/.local/bin/starship"
+  register: starship_binary
+
+- name: Check installed starship version.
+  ansible.builtin.command:
+    cmd: "{{ user_home }}/.local/bin/starship --version"
+  register: starship_version_check
+  changed_when: false
+  failed_when: false
+  when: starship_binary.stat.exists
+
+- name: Download and extract starship binary from GitHub.
+  ansible.builtin.unarchive:
+    src: "https://github.com/starship/starship/releases/download/v{{ starship_version }}/starship-aarch64-unknown-linux-musl.tar.gz"
+    dest: "{{ user_home }}/.local/bin"
+    remote_src: true
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+  when: >
+    not starship_binary.stat.exists or
+    (starship_version_check.stdout is defined and starship_version not in starship_version_check.stdout)
+
+# lazygit -- install from GitHub release (replaces untrusted atim/lazygit COPR)
+- name: Check if lazygit is already installed.
+  ansible.builtin.stat:
+    path: "{{ user_home }}/.local/bin/lazygit"
+  register: lazygit_binary
+
+- name: Check installed lazygit version.
+  ansible.builtin.command:
+    cmd: "{{ user_home }}/.local/bin/lazygit --version"
+  register: lazygit_version_check
+  changed_when: false
+  failed_when: false
+  when: lazygit_binary.stat.exists
+
+- name: Download and extract lazygit binary from GitHub.
+  ansible.builtin.unarchive:
+    src: "https://github.com/jesseduffield/lazygit/releases/download/v{{ lazygit_version }}/lazygit_{{ lazygit_version }}_linux_arm64.tar.gz"
+    dest: "{{ user_home }}/.local/bin"
+    remote_src: true
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+  when: >
+    not lazygit_binary.stat.exists or
+    (lazygit_version_check.stdout is defined and lazygit_version not in lazygit_version_check.stdout)
+
+# eza -- install from GitHub release
+- name: Check if eza is already installed.
+  ansible.builtin.stat:
+    path: "{{ user_home }}/.local/bin/eza"
+  register: eza_binary
+
+- name: Check installed eza version.
+  ansible.builtin.command:
+    cmd: "{{ user_home }}/.local/bin/eza --version"
+  register: eza_version_check
+  changed_when: false
+  failed_when: false
+  when: eza_binary.stat.exists
+
+- name: Download and extract eza binary from GitHub.
+  ansible.builtin.unarchive:
+    src: "https://github.com/eza-community/eza/releases/download/v{{ eza_version }}/eza_aarch64-unknown-linux-gnu.tar.gz"
+    dest: "{{ user_home }}/.local/bin"
+    remote_src: true
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+  when: >
+    not eza_binary.stat.exists or
+    (eza_version_check.stdout is defined and eza_version not in eza_version_check.stdout)
+
+# sops -- install binary from GitHub release
+- name: Check if sops is already installed.
+  ansible.builtin.stat:
+    path: "{{ user_home }}/.local/bin/sops"
+  register: sops_binary
+
+- name: Check installed sops version.
+  ansible.builtin.command:
+    cmd: "{{ user_home }}/.local/bin/sops --version"
+  register: sops_version_check
+  changed_when: false
+  failed_when: false
+  when: sops_binary.stat.exists
+
+- name: Download sops binary from GitHub.
+  ansible.builtin.get_url:
+    url: "https://github.com/getsops/sops/releases/download/v{{ sops_version }}/sops-v{{ sops_version }}.linux.arm64"
+    dest: "{{ user_home }}/.local/bin/sops"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+  when: >
+    not sops_binary.stat.exists or
+    (sops_version_check.stdout is defined and sops_version not in sops_version_check.stdout)

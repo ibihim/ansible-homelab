@@ -1,0 +1,34 @@
+---
+# Role: base
+# Installs system-level packages available in Fedora repos.
+
+- name: Install base system packages.
+  become: true
+  ansible.builtin.dnf:
+    name:
+      - git
+      - gcc
+      - make
+      - curl
+      - wget
+      - htop
+      - tree
+      - wl-clipboard
+      - gnupg2
+      - pinentry-curses
+      - age
+      - python3-pip
+      - python3-libselinux
+      - unzip
+      - tar
+      - mosh
+      - yt-dlp
+    state: present
+
+- name: Ensure ~/.local/bin directory exists.
+  ansible.builtin.file:
+    path: "{{ user_home }}/.local/bin"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"

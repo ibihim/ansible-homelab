@@ -1,0 +1,12 @@
+---
+# Role: podman
+# Installs podman + podman-compose. Podman is already pre-installed on Fedora
+# but we ensure it and podman-compose are present.
+
+- name: Install podman and podman-compose.
+  become: true
+  ansible.builtin.dnf:
+    name:
+      - podman
+      - podman-compose
+    state: present

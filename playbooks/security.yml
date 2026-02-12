@@ -1,0 +1,17 @@
+---
+# Security playbook: SSH hardening, firewalld, fail2ban, SELinux, auto-updates
+#
+# Usage:
+#   ansible-playbook playbooks/security.yml --ask-become-pass
+
+- name: Apply security hardening.
+  hosts: all
+
+  vars_files:
+    - ../vars/main.yml
+    - ../vars/personal.yml
+    # Uncomment after encrypting with ansible-vault:
+    # - ../vars/secrets.yml
+
+  roles:
+    - { role: security, tags: ['security'] }

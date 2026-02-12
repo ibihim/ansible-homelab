@@ -1,0 +1,40 @@
+---
+# Role: tmux
+# Installs tmux, TPM (Tmux Plugin Manager), and deploys config.
+
+- name: Install tmux.
+  become: true
+  ansible.builtin.dnf:
+    name: tmux
+    state: present
+
+- name: Ensure tmux config directory exists.
+  ansible.builtin.file:
+    path: "{{ user_home }}/.config/tmux"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+
+- name: Ensure tmux plugins directory exists.
+  ansible.builtin.file:
+    path: "{{ user_home }}/.config/tmux/plugins"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+
+- name: Install TPM (Tmux Plugin Manager).
+  ansible.builtin.git:
+    repo: https://github.com/tmux-plugins/tpm
+    dest: "{{ user_home }}/.config/tmux/plugins/tpm"
+    version: master
+    depth: 1
+
+- name: Deploy tmux config.
+  ansible.builtin.template:
+    src: tmux.conf.j2
+    dest: "{{ user_home }}/.config/tmux/tmux.conf"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0644"

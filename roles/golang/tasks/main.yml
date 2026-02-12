@@ -1,0 +1,62 @@
+---
+# Role: golang
+# Installs Go toolchain from go.dev official releases.
+# Always fetches the latest stable version -- Go is a development dependency
+# where staying current matters for language features and security patches.
+
+- name: Fetch latest Go version from go.dev.
+  ansible.builtin.uri:
+    url: https://go.dev/dl/?mode=json
+    return_content: true
+  register: go_release
+
+- name: Set Go version fact.
+  ansible.builtin.set_fact:
+    go_latest: "{{ go_release.json[0].version }}"
+
+- name: Check installed Go version.
+  ansible.builtin.command:
+    cmd: /usr/local/go/bin/go version
+  register: go_version_check
+  changed_when: false
+  failed_when: false
+
+- name: Remove existing Go installation before upgrade.
+  become: true
+  ansible.builtin.file:
+    path: /usr/local/go
+    state: absent
+  when: go_latest not in (go_version_check.stdout | default(''))
+
+- name: Download and extract Go tarball.
+  become: true
+  ansible.builtin.unarchive:
+    src: "https://go.dev/dl/{{ go_latest }}.linux-arm64.tar.gz"
+    dest: /usr/local/
+    remote_src: true
+  when: go_latest not in (go_version_check.stdout | default(''))
+
+- name: Remove system Go packages if present.
+  become: true
+  ansible.builtin.dnf:
+    name:
+      - golang
+      - golang-bin
+      - golang-src
+    state: absent
+
+- name: Ensure GOPATH directory exists.
+  ansible.builtin.file:
+    path: "{{ user_home }}/go"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+
+- name: Ensure GOPATH/bin directory exists.
+  ansible.builtin.file:
+    path: "{{ user_home }}/go/bin"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"

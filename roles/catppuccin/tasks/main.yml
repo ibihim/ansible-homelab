@@ -1,0 +1,73 @@
+---
+# Role: catppuccin
+# Deploys Catppuccin Macchiato theme files for foot, bat, and starship.
+# Fish theme is deployed by the fish role.
+# Delta/git theme is deployed by the git role.
+# Tmux theme is managed by TPM (see tmux role).
+
+# ── Foot terminal theme ──
+- name: Ensure foot config directory exists.
+  ansible.builtin.file:
+    path: "{{ user_home }}/.config/foot"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+
+- name: Deploy foot config with Catppuccin theme.
+  ansible.builtin.template:
+    src: foot.ini.j2
+    dest: "{{ user_home }}/.config/foot/foot.ini"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0644"
+
+# ── Bat theme ──
+- name: Ensure bat config directory exists.
+  ansible.builtin.file:
+    path: "{{ user_home }}/.config/bat"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+
+- name: Ensure bat themes directory exists.
+  ansible.builtin.file:
+    path: "{{ user_home }}/.config/bat/themes"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+
+- name: Deploy bat config.
+  ansible.builtin.copy:
+    content: |
+      --theme='Catppuccin Macchiato'
+    dest: "{{ user_home }}/.config/bat/config"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0644"
+
+- name: Download Catppuccin Macchiato bat theme.
+  ansible.builtin.get_url:
+    url: "https://raw.githubusercontent.com/catppuccin/bat/main/themes/Catppuccin%20Macchiato.tmTheme"
+    dest: "{{ user_home }}/.config/bat/themes/Catppuccin Macchiato.tmTheme"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0644"
+  register: bat_theme_download
+
+- name: Rebuild bat theme cache.
+  ansible.builtin.command:
+    cmd: bat cache --build
+  changed_when: true
+  when: bat_theme_download.changed
+
+# ── Starship prompt ──
+- name: Deploy starship config with Catppuccin Powerline preset.
+  ansible.builtin.copy:
+    src: starship.toml
+    dest: "{{ user_home }}/.config/starship.toml"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0644"

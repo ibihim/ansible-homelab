@@ -1,0 +1,52 @@
+---
+# Role: fonts
+# Installs JetBrains Mono Nerd Font from GitHub releases.
+# The Fedora repos only have jetbrains-mono-fonts (without Nerd glyphs).
+
+- name: Ensure fonts directory exists.
+  ansible.builtin.file:
+    path: "{{ fonts_dir }}"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+
+- name: Ensure NerdFonts subdirectory exists.
+  ansible.builtin.file:
+    path: "{{ fonts_dir }}/NerdFonts"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+
+- name: Check if JetBrains Mono Nerd Font is already installed.
+  ansible.builtin.find:
+    paths: "{{ fonts_dir }}/NerdFonts"
+    patterns: "JetBrainsMonoNerdFont-Regular.ttf"
+  register: nerd_font_check
+
+- name: Download JetBrains Mono Nerd Font archive.
+  ansible.builtin.get_url:
+    url: "https://github.com/ryanoasis/nerd-fonts/releases/download/{{ nerd_font_version }}/{{ nerd_font_name }}.zip"
+    dest: "/tmp/{{ nerd_font_name }}.zip"
+    mode: "0644"
+  when: nerd_font_check.matched == 0
+
+- name: Extract JetBrains Mono Nerd Font.
+  ansible.builtin.unarchive:
+    src: "/tmp/{{ nerd_font_name }}.zip"
+    dest: "{{ fonts_dir }}/NerdFonts"
+    remote_src: true
+  when: nerd_font_check.matched == 0
+
+- name: Clean up font archive.
+  ansible.builtin.file:
+    path: "/tmp/{{ nerd_font_name }}.zip"
+    state: absent
+  when: nerd_font_check.matched == 0
+
+- name: Rebuild font cache.
+  ansible.builtin.command:
+    cmd: fc-cache -fv
+  changed_when: false
+  when: nerd_font_check.matched == 0

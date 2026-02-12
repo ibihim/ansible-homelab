@@ -1,0 +1,83 @@
+---
+# Role: gpg
+# Configures GnuPG and gpg-agent with SSH support.
+# gnupg2 and pinentry-curses are already installed by the base role.
+
+- name: Ensure .gnupg directory exists with correct permissions.
+  ansible.builtin.file:
+    path: "{{ user_home }}/.gnupg"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0700"
+
+- name: Deploy gpg.conf.
+  ansible.builtin.template:
+    src: gpg.conf.j2
+    dest: "{{ user_home }}/.gnupg/gpg.conf"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0600"
+
+- name: Deploy gpg-agent.conf.
+  ansible.builtin.template:
+    src: gpg-agent.conf.j2
+    dest: "{{ user_home }}/.gnupg/gpg-agent.conf"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0600"
+  notify: restart gpg-agent
+
+- name: Ensure gpg-agent systemd user directory exists.
+  ansible.builtin.file:
+    path: "{{ user_home }}/.config/systemd/user"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+
+- name: Deploy gpg-agent systemd user service.
+  ansible.builtin.template:
+    src: gpg-agent.service.j2
+    dest: "{{ user_home }}/.config/systemd/user/gpg-agent.service"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0644"
+  notify: restart gpg-agent
+
+- name: Deploy gpg-agent socket unit.
+  ansible.builtin.template:
+    src: gpg-agent.socket.j2
+    dest: "{{ user_home }}/.config/systemd/user/gpg-agent.socket"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0644"
+  notify: restart gpg-agent
+
+- name: Deploy gpg-agent-ssh socket unit.
+  ansible.builtin.template:
+    src: gpg-agent-ssh.socket.j2
+    dest: "{{ user_home }}/.config/systemd/user/gpg-agent-ssh.socket"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0644"
+  notify: restart gpg-agent
+
+- name: Reload systemd user daemon.
+  ansible.builtin.systemd:
+    daemon_reload: true
+    scope: user
+
+- name: Enable gpg-agent socket.
+  ansible.builtin.systemd:
+    name: gpg-agent.socket
+    enabled: true
+    state: started
+    scope: user
+
+- name: Enable gpg-agent-ssh socket.
+  ansible.builtin.systemd:
+    name: gpg-agent-ssh.socket
+    enabled: true
+    state: started
+    scope: user

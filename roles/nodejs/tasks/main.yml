@@ -1,0 +1,25 @@
+---
+# Role: nodejs
+# Installs Node.js from Fedora repos and configures npm
+# to use a user-local global prefix (~/.npm-global).
+
+- name: Install Node.js.
+  become: true
+  ansible.builtin.dnf:
+    name: "{{ nodejs_package }}"
+    state: present
+
+- name: Create npm global directory.
+  ansible.builtin.file:
+    path: "{{ user_home }}/.npm-global"
+    state: directory
+    owner: "{{ user }}"
+    mode: "0755"
+
+- name: Configure npm global prefix.
+  ansible.builtin.copy:
+    dest: "{{ user_home }}/.npmrc"
+    content: |
+      prefix={{ user_home }}/.npm-global
+    owner: "{{ user }}"
+    mode: "0644"

@@ -1,0 +1,61 @@
+---
+# Role: neovim
+# Installs neovim and deploys the init.lua bootstrap config.
+# The full LazyVim config lives in ~/.config/nvim/lua/ and is managed
+# separately (e.g., via git). This role only creates the init.lua entrypoint.
+
+- name: Install neovim.
+  become: true
+  ansible.builtin.dnf:
+    name: neovim
+    state: present
+
+- name: Ensure neovim config directory exists.
+  ansible.builtin.file:
+    path: "{{ user_home }}/.config/nvim"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+
+- name: Deploy neovim init.lua (LazyVim entrypoint).
+  ansible.builtin.template:
+    src: init.lua.j2
+    dest: "{{ user_home }}/.config/nvim/init.lua"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0644"
+
+- name: Ensure user environment.d directory exists.
+  ansible.builtin.file:
+    path: "{{ user_home }}/.config/environment.d"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+
+- name: Set neovim as default editor via environment.d.
+  ansible.builtin.copy:
+    content: |
+      EDITOR=nvim
+      VISUAL=nvim
+    dest: "{{ user_home }}/.config/environment.d/50-editor.conf"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0644"
+
+- name: Create vi symlink to nvim.
+  become: true
+  ansible.builtin.alternatives:
+    name: vi
+    link: /usr/bin/vi
+    path: /usr/bin/nvim
+  failed_when: false
+
+- name: Create vim symlink to nvim.
+  become: true
+  ansible.builtin.alternatives:
+    name: vim
+    link: /usr/bin/vim
+    path: /usr/bin/nvim
+  failed_when: false

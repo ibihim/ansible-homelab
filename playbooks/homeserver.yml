@@ -1,0 +1,20 @@
+---
+# Home server playbook: Podman containers, secrets, Immich, Nextcloud
+#
+# Usage:
+#   ansible-playbook playbooks/homeserver.yml --ask-become-pass
+
+- name: Configure home server services.
+  hosts: all
+
+  vars_files:
+    - ../vars/main.yml
+    - ../vars/personal.yml
+    # Uncomment after encrypting with ansible-vault:
+    # - ../vars/secrets.yml
+
+  roles:
+    - { role: podman, tags: ['podman'] }
+    - { role: secrets, tags: ['secrets'] }
+    - { role: immich, tags: ['immich'] }
+    - { role: nextcloud, tags: ['nextcloud'] }
