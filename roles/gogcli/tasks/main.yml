@@ -1,0 +1,45 @@
+---
+# Role: gogcli
+# Installs gog (gogcli) — a Google Workspace CLI used by OpenClaw
+# for Gmail, Calendar, Drive, etc.
+#
+# Pre-built aarch64 binary from GitHub releases.
+#
+# Expected variables:
+#   gogcli_version      — pinned version (from vars/main.yml)
+#   gogcli_install_user — target user
+#   gogcli_install_home — target home dir
+
+# ── 1. Check current installation ──
+- name: Check if gog is already installed.
+  become: true
+  ansible.builtin.stat:
+    path: "{{ gogcli_install_home }}/.local/bin/gog"
+  register: gog_binary
+
+- name: Check installed gog version.
+  become: true
+  become_user: "{{ gogcli_install_user }}"
+  ansible.builtin.command:
+    cmd: "{{ gogcli_install_home }}/.local/bin/gog --version"
+  register: gog_version_check
+  changed_when: false
+  failed_when: false
+  when: gog_binary.stat.exists
+
+# ── 2. Download and extract ──
+- name: Download and extract gog binary from GitHub.
+  become: true
+  ansible.builtin.unarchive:
+    src: "https://github.com/steipete/gogcli/releases/download/v{{ gogcli_version }}/gogcli_{{ gogcli_version }}_linux_arm64.tar.gz"
+    dest: "{{ gogcli_install_home }}/.local/bin"
+    remote_src: true
+    owner: "{{ gogcli_install_user }}"
+    group: "{{ gogcli_install_user }}"
+    mode: "0755"
+    extra_opts:
+      - --no-anchored
+      - gog
+  when: >
+    not gog_binary.stat.exists or
+    (gog_version_check.stdout is defined and gogcli_version not in gog_version_check.stdout)

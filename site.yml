@@ -4,9 +4,10 @@
 # This runs everything in order:
 #   0. Bootstrap (dnf cache, loginctl linger)
 #   1. Security hardening
-#   2. Development environment
-#   3. Essential services (Tailscale, Syncthing)
-#   4. Home server services (Podman, Immich, Nextcloud)
+#   2. Enclave users (isolated service accounts)
+#   3. Development environment
+#   4. Essential services (Tailscale, Syncthing)
+#   5. Home server services (Podman, Immich, Nextcloud)
 #
 # Usage:
 #   ansible-playbook site.yml --ask-become-pass
@@ -16,6 +17,7 @@
 
 - import_playbook: playbooks/bootstrap.yml
 - import_playbook: playbooks/security.yml
+- import_playbook: playbooks/enclaves.yml
 - import_playbook: playbooks/dev.yml
 - import_playbook: playbooks/essentials.yml
 - import_playbook: playbooks/homeserver.yml

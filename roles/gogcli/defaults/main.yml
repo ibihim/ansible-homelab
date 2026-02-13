@@ -1,0 +1,7 @@
+---
+# Role: gogcli — default variables
+# The user under whose home the binary is installed.
+# Overridden by the enclaves playbook loop.
+
+gogcli_install_user: "{{ user }}"
+gogcli_install_home: "/home/{{ gogcli_install_user }}"

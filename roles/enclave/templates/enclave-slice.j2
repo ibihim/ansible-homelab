@@ -1,0 +1,13 @@
+# {{ ansible_managed }}
+# Resource-limit slice for enclave user "{{ enclave_name }}".
+# All processes under user-{{ enclave_uid }}.slice are bounded by these limits
+# because user-{{ enclave_uid }}.slice is re-parented under this slice.
+
+[Unit]
+Description=Enclave resource slice for {{ enclave_name }}
+Before=slices.target
+
+[Slice]
+MemoryMax={{ enclave_memory_max }}
+CPUQuota={{ enclave_cpu_quota }}
+TasksMax={{ enclave_tasks_max }}

@@ -26,6 +26,12 @@ lazygit_version: "0.59.0"
 # eza version (GitHub release)
 eza_version: "0.23.4"
 
+# Google Cloud CLI version (official tarball)
+gcloud_version: "556.0.0"
+
+# gogcli version (GitHub release) — Google Workspace CLI for OpenClaw
+gogcli_version: "0.9.0"
+
 # Syncthing version (GitHub release)
 syncthing_version: "v2.0.14"
 
@@ -64,3 +70,19 @@ ssh_password_authentication: "no"
 firewall_allowed_services:
   - ssh
   - mosh
+
+# Enclave users — isolated service accounts with cgroup resource limits.
+# Each entry creates a system user, cgroup slice, linger, and directory scaffolding.
+# Override defaults from roles/enclave/defaults/main.yml per-entry.
+enclaves:
+  - name: ibihim-ai
+    memory_max: "12G"
+    cpu_quota: "600%"
+    tasks_max: 512
+    gcloud: true
+  - name: openclaw
+    memory_max: "12G"
+    cpu_quota: "600%"
+    tasks_max: 512
+    gcloud: true
+    gogcli: true

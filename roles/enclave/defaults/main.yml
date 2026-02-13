@@ -1,0 +1,9 @@
+---
+# Role: enclave — default variables
+# Override per-enclave via the enclaves list in vars/main.yml.
+
+enclave_default_memory_max: "12G"       # Hard memory ceiling (75% of 16G)
+enclave_default_cpu_quota: "600%"       # 6 of 8 cores — leaves headroom for admin
+enclave_default_tasks_max: 512          # Fork bomb protection
+enclave_default_shell: "/usr/sbin/nologin"
+enclave_default_home_mode: "0700"

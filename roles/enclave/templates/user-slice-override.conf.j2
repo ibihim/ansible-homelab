@@ -1,0 +1,9 @@
+# {{ ansible_managed }}
+# Re-parent user-{{ enclave_uid }}.slice under enclave-{{ enclave_name }}.slice
+# so that all processes of this user inherit the enclave resource limits.
+
+[Unit]
+Description=User slice for enclave {{ enclave_name }} (re-parented)
+
+[Slice]
+Slice=enclave-{{ enclave_name }}.slice

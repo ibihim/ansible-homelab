@@ -1,0 +1,58 @@
+---
+# Enclaves playbook: Create isolated user environments with resource limits.
+#
+# Loops over the `enclaves` list from vars/main.yml. Each entry becomes
+# a hardened system user with its own cgroup slice, linger, and directory
+# scaffolding — ready for a service role to deploy workloads into.
+#
+# Usage:
+#   ansible-playbook playbooks/enclaves.yml --ask-become-pass
+#   ansible-playbook playbooks/enclaves.yml --ask-become-pass --check --diff
+
+- name: Provision enclave users.
+  hosts: all
+
+  vars_files:
+    - ../vars/main.yml
+    - ../vars/personal.yml
+
+  tasks:
+    - name: Apply enclave role for each enclave.
+      ansible.builtin.include_role:
+        name: enclave
+      vars:
+        enclave_name: "{{ enclave_item.name }}"
+        enclave_memory_max: "{{ enclave_item.memory_max | default(enclave_default_memory_max) }}"
+        enclave_cpu_quota: "{{ enclave_item.cpu_quota | default(enclave_default_cpu_quota) }}"
+        enclave_tasks_max: "{{ enclave_item.tasks_max | default(enclave_default_tasks_max) }}"
+        enclave_shell: "{{ enclave_item.shell | default(enclave_default_shell) }}"
+        enclave_home_mode: "{{ enclave_item.home_mode | default(enclave_default_home_mode) }}"
+      loop: "{{ enclaves }}"
+      loop_control:
+        loop_var: enclave_item
+        label: "{{ enclave_item.name }}"
+      tags: ['enclave']
+
+    - name: Install gcloud for enclaves that need it.
+      ansible.builtin.include_role:
+        name: gcloud
+      vars:
+        gcloud_install_user: "{{ enclave_item.name }}"
+        gcloud_install_home: "/home/{{ enclave_item.name }}"
+      loop: "{{ enclaves | selectattr('gcloud', 'defined') | selectattr('gcloud') | list }}"
+      loop_control:
+        loop_var: enclave_item
+        label: "{{ enclave_item.name }}"
+      tags: ['enclave', 'gcloud']
+
+    - name: Install gogcli for enclaves that need it.
+      ansible.builtin.include_role:
+        name: gogcli
+      vars:
+        gogcli_install_user: "{{ enclave_item.name }}"
+        gogcli_install_home: "/home/{{ enclave_item.name }}"
+      loop: "{{ enclaves | selectattr('gogcli', 'defined') | selectattr('gogcli') | list }}"
+      loop_control:
+        loop_var: enclave_item
+        label: "{{ enclave_item.name }}"
+      tags: ['enclave', 'gogcli']

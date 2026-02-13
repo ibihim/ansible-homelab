@@ -1,0 +1,171 @@
+---
+# Role: enclave
+# Creates an isolated user environment with resource limits via cgroup slices.
+# Called once per enclave entry; the playbook loops over the enclaves list.
+#
+# Expected variables (set by the playbook loop):
+#   enclave_name       — user/slice name (e.g. svc-mybot)
+#   enclave_memory_max — per-enclave override or default
+#   enclave_cpu_quota  — per-enclave override or default
+#   enclave_tasks_max  — per-enclave override or default
+#   enclave_shell      — per-enclave override or default
+#   enclave_home_mode  — per-enclave override or default
+
+# ── 1. Validate name ──
+- name: "Validate enclave name '{{ enclave_name }}'."
+  ansible.builtin.assert:
+    that:
+      - enclave_name is match('^[a-z][a-z0-9-]*$')
+    fail_msg: >-
+      Enclave name '{{ enclave_name }}' is invalid.
+      Must start with a lowercase letter, then lowercase letters, digits, or hyphens.
+
+# ── 2. Create user ──
+- name: "Create enclave user '{{ enclave_name }}'."
+  become: true
+  ansible.builtin.user:
+    name: "{{ enclave_name }}"
+    system: true
+    shell: "{{ enclave_shell }}"
+    create_home: true
+    home: "/home/{{ enclave_name }}"
+    groups: []
+    append: false
+
+# ── 3. Lock home dir ──
+- name: "Lock home directory for '{{ enclave_name }}'."
+  become: true
+  ansible.builtin.file:
+    path: "/home/{{ enclave_name }}"
+    state: directory
+    owner: "{{ enclave_name }}"
+    group: "{{ enclave_name }}"
+    mode: "{{ enclave_home_mode }}"
+
+# ── 3b. Restore SELinux context on home dir ──
+- name: "Restore SELinux context on /home/{{ enclave_name }}."
+  become: true
+  ansible.builtin.command:
+    cmd: "restorecon -R /home/{{ enclave_name }}"
+  changed_when: false
+
+# ── 4. Lookup UID ──
+- name: "Look up UID for '{{ enclave_name }}'."
+  ansible.builtin.command:
+    cmd: "id -u {{ enclave_name }}"
+  register: enclave_uid_result
+  changed_when: false
+
+- name: "Set enclave_uid fact."
+  ansible.builtin.set_fact:
+    enclave_uid: "{{ enclave_uid_result.stdout }}"
+
+# ── 5. Enable linger ──
+- name: "Check if linger is enabled for '{{ enclave_name }}'."
+  ansible.builtin.stat:
+    path: "/var/lib/systemd/linger/{{ enclave_name }}"
+  register: enclave_linger_file
+
+- name: "Enable linger for '{{ enclave_name }}'."
+  become: true
+  ansible.builtin.command:
+    cmd: "loginctl enable-linger {{ enclave_name }}"
+  when: not enclave_linger_file.stat.exists
+
+# ── 6. Create standard directories ──
+- name: "Create standard directories for '{{ enclave_name }}'."
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ enclave_name }}"
+    group: "{{ enclave_name }}"
+    mode: "0755"
+  loop:
+    - "/home/{{ enclave_name }}/.config/systemd/user"
+    - "/home/{{ enclave_name }}/.config/services"
+    - "/home/{{ enclave_name }}/.config/fish/conf.d"
+    - "/home/{{ enclave_name }}/.local/share/services"
+    - "/home/{{ enclave_name }}/.local/bin"
+
+# ── 6b. Ensure ~/.local/bin is in fish PATH ──
+- name: "Add ~/.local/bin to fish PATH for '{{ enclave_name }}'."
+  become: true
+  ansible.builtin.copy:
+    dest: "/home/{{ enclave_name }}/.config/fish/conf.d/local-bin-path.fish"
+    content: |
+      # Managed by Ansible — ensure user-local paths are in PATH.
+      fish_add_path --path ~/.local/bin
+      fish_add_path --path ~/.npm-global/bin
+    owner: "{{ enclave_name }}"
+    group: "{{ enclave_name }}"
+    mode: "0644"
+
+# ── 7. Deploy enclave slice ──
+- name: "Deploy enclave-{{ enclave_name }}.slice."
+  become: true
+  ansible.builtin.template:
+    src: enclave-slice.j2
+    dest: "/etc/systemd/system/enclave-{{ enclave_name }}.slice"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: systemd daemon-reload
+
+# ── 8. Deploy user-slice override ──
+- name: "Ensure override directory for user-{{ enclave_uid }}.slice."
+  become: true
+  ansible.builtin.file:
+    path: "/etc/systemd/system/user-{{ enclave_uid }}.slice.d"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: "Deploy user-slice override for '{{ enclave_name }}'."
+  become: true
+  ansible.builtin.template:
+    src: user-slice-override.conf.j2
+    dest: "/etc/systemd/system/user-{{ enclave_uid }}.slice.d/10-enclave.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: systemd daemon-reload
+
+# ── 9. Ensure subuid/subgid for rootless podman ──
+- name: "Check subuid entry for '{{ enclave_name }}'."
+  ansible.builtin.command:
+    cmd: "grep -q '^{{ enclave_name }}:' /etc/subuid"
+  register: enclave_subuid_check
+  changed_when: false
+  failed_when: false
+
+- name: "Allocate subordinate UIDs for '{{ enclave_name }}'."
+  become: true
+  ansible.builtin.command:
+    cmd: "usermod --add-subuids 100000-165535 {{ enclave_name }}"
+  when: enclave_subuid_check.rc != 0
+
+- name: "Check subgid entry for '{{ enclave_name }}'."
+  ansible.builtin.command:
+    cmd: "grep -q '^{{ enclave_name }}:' /etc/subgid"
+  register: enclave_subgid_check
+  changed_when: false
+  failed_when: false
+
+- name: "Allocate subordinate GIDs for '{{ enclave_name }}'."
+  become: true
+  ansible.builtin.command:
+    cmd: "usermod --add-subgids 100000-165535 {{ enclave_name }}"
+  when: enclave_subgid_check.rc != 0
+
+# ── 10. Flush handlers and start slice ──
+- name: Flush handlers to apply systemd changes.
+  ansible.builtin.meta: flush_handlers
+
+- name: "Start enclave-{{ enclave_name }}.slice."
+  become: true
+  ansible.builtin.systemd:
+    name: "enclave-{{ enclave_name }}.slice"
+    state: started
+    daemon_reload: true

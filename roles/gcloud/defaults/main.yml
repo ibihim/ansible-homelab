@@ -1,0 +1,7 @@
+---
+# Role: gcloud — default variables
+# The user under whose home the SDK is installed.
+# Overridden by the enclaves playbook loop.
+
+gcloud_install_user: "{{ user }}"
+gcloud_install_home: "/home/{{ gcloud_install_user }}"

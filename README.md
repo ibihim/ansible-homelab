@@ -103,6 +103,53 @@ ansible-playbook site.yml --ask-become-pass --tags "fish,tmux"
 ansible-playbook playbooks/homeserver.yml --ask-become-pass --tags "immich"
 ```
 
+## Enclave users
+
+Enclaves are isolated service accounts with cgroup resource limits. Each gets
+its own user, home directory, systemd slice, and linger — ready for deploying
+containerised workloads.
+
+### Add a new enclave
+
+1. Add an entry to the `enclaves` list in `vars/main.yml`:
+   ```yaml
+   enclaves:
+     - name: my-service
+       memory_max: "12G"
+       cpu_quota: "600%"
+       tasks_max: 512
+   ```
+
+2. Run the playbook:
+   ```bash
+   ansible-playbook site.yml --ask-become-pass --tags enclave
+   ```
+
+### Get a shell inside an enclave
+
+Enclave users have `/usr/sbin/nologin` as their shell, so use `sudo` to run
+commands as them:
+
+```bash
+# Interactive shell
+sudo -u my-service bash
+
+# Single command
+sudo -u my-service ls -la /home/my-service/
+```
+
+### Remove an enclave
+
+```bash
+sudo ./scripts/remove-enclave.sh my-service
+```
+
+This stops the cgroup slice (killing all processes), disables linger, removes
+the user and home directory, cleans up systemd artifacts, and reloads systemd.
+
+After removing, also delete the entry from `vars/main.yml` so Ansible doesn't
+recreate it on the next run.
+
 ## Post-run manual steps
 
 1. **Tailscale** (first time): `sudo tailscale up`
@@ -146,6 +193,7 @@ ansible-homelab/
   playbooks/
     bootstrap.yml                  # dnf cache, loginctl linger
     security.yml                   # role: security
+    enclaves.yml                   # Loops over enclaves list → enclave role
     dev.yml                        # roles: base, dev-tools, user-scripts,
                                    #   golang, nodejs, fonts, catppuccin,
                                    #   gpg, git, neovim, fish, tmux
@@ -176,6 +224,9 @@ ansible-homelab/
     immich/                        # Immich compose + user service
     nextcloud/                     # Nextcloud compose + user service
     security/                      # SSH, firewalld, fail2ban, SELinux, auto-updates
+    enclave/                       # Isolated user + cgroup slice
+  scripts/
+    remove-enclave.sh              # Tear down an enclave user
 ```
 
 ## Idempotency

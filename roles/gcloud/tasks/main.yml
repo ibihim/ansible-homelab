@@ -1,0 +1,83 @@
+---
+# Role: gcloud
+# Installs the Google Cloud CLI from the official tarball into a user's home.
+#
+# The SDK lands at ~/.local/share/google-cloud-sdk and key binaries
+# (gcloud, gsutil, bq) are symlinked into ~/.local/bin.
+#
+# Expected variables:
+#   gcloud_version      — pinned version (from vars/main.yml)
+#   gcloud_install_user — target user (defaults to {{ user }})
+#   gcloud_install_home — target home dir
+
+- name: Set gcloud paths.
+  ansible.builtin.set_fact:
+    _gcloud_sdk_dir: "{{ gcloud_install_home }}/.local/share/google-cloud-sdk"
+    _gcloud_bin_dir: "{{ gcloud_install_home }}/.local/bin"
+
+# ── 1. Check current installation ──
+- name: Check if gcloud is already installed.
+  become: true
+  ansible.builtin.stat:
+    path: "{{ _gcloud_sdk_dir }}/bin/gcloud"
+  register: gcloud_binary
+
+- name: Check installed gcloud version.
+  become: true
+  become_user: "{{ gcloud_install_user }}"
+  ansible.builtin.command:
+    cmd: "{{ _gcloud_sdk_dir }}/bin/gcloud version --format='value(Google Cloud SDK)'"
+  register: gcloud_version_check
+  changed_when: false
+  failed_when: false
+  when: gcloud_binary.stat.exists
+
+- name: Set gcloud needs install fact.
+  ansible.builtin.set_fact:
+    _gcloud_needs_install: >-
+      {{
+        not gcloud_binary.stat.exists or
+        (gcloud_version_check.stdout is defined and gcloud_version not in gcloud_version_check.stdout)
+      }}
+
+# ── 2. Download and extract ──
+- name: Remove existing SDK before upgrade.
+  become: true
+  ansible.builtin.file:
+    path: "{{ _gcloud_sdk_dir }}"
+    state: absent
+  when: _gcloud_needs_install | bool and gcloud_binary.stat.exists
+
+- name: Ensure SDK parent directory exists.
+  become: true
+  ansible.builtin.file:
+    path: "{{ gcloud_install_home }}/.local/share"
+    state: directory
+    owner: "{{ gcloud_install_user }}"
+    group: "{{ gcloud_install_user }}"
+    mode: "0755"
+  when: _gcloud_needs_install | bool
+
+- name: Download and extract Google Cloud CLI tarball.
+  become: true
+  ansible.builtin.unarchive:
+    src: "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-{{ gcloud_version }}-linux-arm.tar.gz"
+    dest: "{{ gcloud_install_home }}/.local/share"
+    remote_src: true
+    owner: "{{ gcloud_install_user }}"
+    group: "{{ gcloud_install_user }}"
+  when: _gcloud_needs_install | bool
+
+# ── 3. Symlink key binaries into ~/.local/bin ──
+- name: Symlink gcloud binaries into ~/.local/bin.
+  become: true
+  ansible.builtin.file:
+    src: "{{ _gcloud_sdk_dir }}/bin/{{ item }}"
+    dest: "{{ _gcloud_bin_dir }}/{{ item }}"
+    state: link
+    owner: "{{ gcloud_install_user }}"
+    group: "{{ gcloud_install_user }}"
+  loop:
+    - gcloud
+    - gsutil
+    - bq
