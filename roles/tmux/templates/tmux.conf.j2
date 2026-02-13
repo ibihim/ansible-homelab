@@ -9,18 +9,19 @@ setw -g pane-base-index 1
 set  -g status-keys vi
 set  -g mode-keys vi
 set  -g mouse on
-set  -g focus-events off
-setw -g aggressive-resize off
-setw -g clock-mode-style 12
-set  -s escape-time 500
-set  -g history-limit 15000
 set  -g renumber-windows on
+set  -g focus-events on
+set  -g set-clipboard on
+set  -g detach-on-destroy off
+setw -g aggressive-resize on
+setw -g clock-mode-style 24
+set  -s escape-time {{ tmux_escape_time }}
+set  -g history-limit {{ tmux_history_limit }}
 
 # ── Prefix key: C-a ──
 unbind C-b
 set -g prefix C-a
-bind -n -N "Send the prefix key through to the application" \
-  C-a send-prefix
+bind C-a send-prefix
 
 # ── Catppuccin theme ──
 set -g @catppuccin_flavor '{{ catppuccin_flavor }}'
@@ -31,32 +32,65 @@ set -g @plugin 'tmux-plugins/tmux-sensible'
 set -g @plugin 'christoomey/vim-tmux-navigator'
 set -g @plugin 'catppuccin/tmux'
 set -g @plugin 'tmux-plugins/tmux-resurrect'
+set -g @plugin 'tmux-plugins/tmux-continuum'
 
 # ── Plugin settings ──
 set -g @resurrect-capture-pane-contents 'on'
+set -g @resurrect-strategy-nvim 'session'
+set -g @continuum-restore 'on'
+set -g @continuum-save-interval '15'
+
+# ── Catppuccin options (must be set BEFORE plugin loads) ──
 set -g @catppuccin_window_status_style "rounded"
-set -g status-right "#{E:@catppuccin_status_session} #{E:@catppuccin_status_date_time}"
 
 # ── Keybindings ──
+
+# Splits — inherit current path
 bind | split-window -h -c "#{pane_current_path}"
 bind - split-window -v -c "#{pane_current_path}"
 
+# New window — inherit current path
+bind c new-window -c "#{pane_current_path}"
+
+# Pane navigation
 bind h select-pane -L
 bind j select-pane -D
 bind k select-pane -U
 bind l select-pane -R
 
+# Pane resizing (repeatable)
 bind -r H resize-pane -L 5
 bind -r J resize-pane -D 5
 bind -r K resize-pane -U 5
 bind -r L resize-pane -R 5
 
-# Vi copy mode: yank to Wayland clipboard
-bind -T copy-mode-vi v send-keys -X begin-selection
-bind -T copy-mode-vi y send-keys -X copy-pipe-and-cancel "wl-copy"
+# Swap windows left/right (repeatable)
+bind -r < swap-window -t -1\; select-window -t -1
+bind -r > swap-window -t +1\; select-window -t +1
+
+# Kill session with confirmation
+bind X confirm-before -p "Kill session #S? (y/n)" kill-session
+
+# Vi copy mode
+bind -T copy-mode-vi v   send-keys -X begin-selection
+bind -T copy-mode-vi C-v send-keys -X rectangle-toggle
+bind -T copy-mode-vi y   send-keys -X copy-pipe-and-cancel "wl-copy"
+
+# Sessionizer popup (fzf directory picker)
+bind f display-popup -E -w 80% -h 80% "{{ user_home }}/.local/bin/tmux-sessionizer"
+
+# Lazygit popup
+bind g display-popup -E -w 80% -h 80% -d "#{pane_current_path}" "lazygit"
+
+# Shell popup
+bind G display-popup -E -w 80% -h 80% -d "#{pane_current_path}"
 
 # Reload config
 bind r source-file ~/.config/tmux/tmux.conf \; display-message "Config reloaded!"
 
-# ── Initialize TPM (keep this line at the very bottom) ──
+# ── Initialize TPM ──
 run '~/.config/tmux/plugins/tpm/tpm'
+
+# ── Status bar (must be AFTER TPM so catppuccin modules are defined) ──
+set -g status-right-length 100
+set -g status-right "#{E:@catppuccin_status_directory} #{E:@catppuccin_status_session} #{E:@catppuccin_status_date_time}"

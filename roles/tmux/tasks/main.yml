@@ -1,6 +1,6 @@
 ---
 # Role: tmux
-# Installs tmux, TPM (Tmux Plugin Manager), and deploys config.
+# Installs tmux, TPM (Tmux Plugin Manager), deploys config and sessionizer.
 
 - name: Install tmux.
   become: true
@@ -38,3 +38,17 @@
     owner: "{{ user }}"
     group: "{{ user }}"
     mode: "0644"
+
+- name: Deploy tmux-sessionizer script.
+  ansible.builtin.template:
+    src: tmux-sessionizer.sh.j2
+    dest: "{{ user_home }}/.local/bin/tmux-sessionizer"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: "0755"
+
+- name: Install TPM plugins headlessly.
+  ansible.builtin.command:
+    cmd: "{{ user_home }}/.config/tmux/plugins/tpm/bin/install_plugins"
+  register: tpm_install
+  changed_when: "'Installing' in tpm_install.stdout"

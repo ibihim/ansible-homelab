@@ -1,0 +1,13 @@
+---
+# Directories the sessionizer searches (fd will descend into these)
+tmux_sessionizer_dirs:
+  - "{{ user_home }}/Documents"
+  - "{{ user_home }}/Projects"
+
+# Milliseconds tmux waits after Escape before passing it through.
+# 500 is the tmux default but painfully slow for vi-mode.
+# 10 works well locally and over Tailscale.
+tmux_escape_time: 10
+
+# Number of lines kept in the scrollback buffer per pane.
+tmux_history_limit: 50000

@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# {{ ansible_managed }}
+#
+# tmux-sessionizer — create or switch to a tmux session for a directory.
+#
+# Usage:
+#   tmux-sessionizer              # interactive: fd + fzf picker
+#   tmux-sessionizer /path/to/dir # non-interactive: jump straight there
+#
+# Session naming:
+#   $HOME/Documents/ansible  →  Documents/ansible
+#   Dots and colons (illegal in tmux names) are replaced with underscores.
+
+set -euo pipefail
+
+# ── Pick a directory ──────────────────────────────────────────────
+if [[ $# -eq 1 ]]; then
+    selected="$1"
+else
+    selected=$(
+        fd . \
+{% for dir in tmux_sessionizer_dirs %}
+            {{ dir }} \
+{% endfor %}
+            --min-depth 1 --max-depth 1 --type d \
+        | fzf --prompt="  session > " --height=40% --reverse --border
+    ) || exit 0   # user pressed Escape / Ctrl-C
+fi
+
+# Nothing selected → bail
+[[ -z "$selected" ]] && exit 0
+
+# ── Derive session name ──────────────────────────────────────────
+# Take parent-dir/current-dir (e.g. Documents/ansible)
+session_name="$(basename "$(dirname "$selected")")/$(basename "$selected")"
+
+# Sanitize characters tmux forbids in session names (. and :)
+session_name="${session_name//./_}"
+session_name="${session_name//:/_}"
+
+# ── Create session if it doesn't exist ────────────────────────────
+if ! tmux has-session -t="$session_name" 2>/dev/null; then
+    tmux new-session -ds "$session_name" -c "$selected"
+fi
+
+# ── Attach or switch ─────────────────────────────────────────────
+if [[ -n "${TMUX:-}" ]]; then
+    tmux switch-client -t "$session_name"
+else
+    tmux attach-session -t "$session_name"
+fi
